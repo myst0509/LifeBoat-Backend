@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeBoat Analytics Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg: #0a0a0f;
+      --card: #12121a;
+      --border: rgba(255,255,255,0.08);
+      --text: #f8f8f8;
+      --text-muted: rgba(255,255,255,0.5);
+      --accent: #6366f1;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px;
+    }
+    
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    
+    h1 { font-size: 28px; font-weight: 700; }
+    
+    .refresh-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .refresh-btn:hover { opacity: 0.9; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+    }
+    
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.emerald { color: var(--emerald); }
+    .stat-value.amber { color: var(--amber); }
+    .stat-value.rose { color: var(--rose); }
+    
+    .stat-change {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    
+    .stat-change.positive { color: var(--emerald); }
+    .stat-change.negative { color: var(--rose); }
+    
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--emerald);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .chart-container {
+      height: 300px;
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      padding-top: 20px;
+    }
+    
+    .chart-bar {
+      flex: 1;
+      background: var(--accent);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    
+    .chart-bar:hover {
+      background: #818cf8;
+    }
+    
+    .chart-bar::after {
+      content: attr(data-value);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .chart-bar:hover::after {
+      opacity: 1;
+    }
+    
+    .chart-labels {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    
+    .chart-labels span {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    th {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    
+    td { font-size: 14px; }
+    
+    .event-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .event-badge.install { background: rgba(99, 102, 241, 0.2); color: var(--accent); }
+    .event-badge.signup { background: rgba(52, 211, 153, 0.2); color: var(--emerald); }
+    .event-badge.upgrade { background: rgba(251, 191, 36, 0.2); color: var(--amber); }
+    .event-badge.error { background: rgba(251, 113, 133, 0.2); color: var(--rose); }
+    .event-badge.default { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); }
+    
+    .funnel {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 0;
+    }
+    
+    .funnel-step {
+      flex: 1;
+      text-align: center;
+    }
+    
+    .funnel-bar {
+      height: 60px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    
+    .funnel-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .funnel-label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .funnel-arrow {
+      color: var(--text-muted);
+      font-size: 24px;
+    }
+    
+    .funnel-rate {
+      font-size: 12px;
+      color: var(--emerald);
+      margin-top: 4px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+    
+    .error {
+      background: rgba(251, 113, 133, 0.1);
+      border: 1px solid rgba(251, 113, 133, 0.3);
+      color: var(--rose);
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 LifeBoat Analytics</h1>
+      <button class="refresh-btn" id="refreshBtn">🔄 Refresh</button>
+    </header>
+    
+    <div id="errorContainer"></div>
+    
+    <!-- Key Metrics -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value accent" id="totalUsers">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Signups</div>
+        <div class="stat-value emerald" id="totalSignups">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pro Upgrades</div>
+        <div class="stat-value amber" id="totalUpgrades">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Today</div>
+        <div class="stat-value" id="activeToday">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Signup Rate</div>
+        <div class="stat-value emerald" id="signupRate">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Upgrade Rate</div>
+        <div class="stat-value amber" id="upgradeRate">-</div>
+      </div>
+    </div>
+    
+    <!-- Conversion Funnel -->
+    <div class="section">
+      <div class="section-title">Conversion Funnel</div>
+      <div class="funnel" id="funnel">
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width: 100%;">
+            <span class="funnel-value" id="funnelInstalls">0</span>
+          </div>
+          <div class="funnel-label">Installs</div>
+        </div>
+        <div class="funnel-arrow">→</div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width: 80%;">
+            <span class="funnel-value" id="funnelSignups">0</span>
+          </div>
+          <div class="funnel-label">Signups</div>
+          <div class="funnel-rate" id="funnelSignupRate">0%</div>
+        </div>
+        <div class="funnel-arrow">→</div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width: 60%;">
+            <span class="funnel-value" id="funnelUpgrades">0</span>
+          </div>
+          <div class="funnel-label">Upgrades</div>
+          <div class="funnel-rate" id="funnelUpgradeRate">0%</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Daily Chart -->
+    <div class="section">
+      <div class="section-title">Daily Users (Last 14 Days)</div>
+      <div class="chart-container" id="chartContainer">
+        <div class="loading">Loading chart data...</div>
+      </div>
+      <div class="chart-labels" id="chartLabels"></div>
+    </div>
+    
+    <!-- Real-time Events -->
+    <div class="section">
+      <div class="section-title">
+        <span class="live-dot"></span>
+        Real-time Events
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Time</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="eventsTable">
+          <tr><td colspan="3" class="loading">Loading events...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script>
+    const API_BASE = window.location.origin;
+    
+    async function fetchData(endpoint) {
+      try {
+        const response = await fetch(`${API_BASE}/analytics${endpoint}`);
+        if (!response.ok) throw new Error('API error');
+        return await response.json();
+      } catch (error) {
+        console.error('Fetch error:', error);
+        showError('Failed to load data. Make sure the backend is running.');
+        return null;
+      }
+    }
+    
+    function showError(message) {
+      document.getElementById('errorContainer').innerHTML = `
+        <div class="error">${message}</div>
+      `;
+    }
+    
+    function clearError() {
+      document.getElementById('errorContainer').innerHTML = '';
+    }
+    
+    async function loadDashboard() {
+      clearError();
+      
+      // Load main dashboard stats
+      const dashboard = await fetchData('/dashboard');
+      if (dashboard) {
+        document.getElementById('totalUsers').textContent = dashboard.allTime.totalUsers.toLocaleString();
+        document.getElementById('totalSignups').textContent = dashboard.allTime.totalSignups.toLocaleString();
+        document.getElementById('totalUpgrades').textContent = dashboard.allTime.totalUpgrades.toLocaleString();
+        document.getElementById('activeToday').textContent = dashboard.today.uniqueUsers.toLocaleString();
+        document.getElementById('signupRate').textContent = dashboard.allTime.conversionRate;
+        document.getElementById('upgradeRate').textContent = dashboard.allTime.upgradeRate;
+        
+        // Funnel
+        document.getElementById('funnelInstalls').textContent = dashboard.allTime.totalInstalls;
+        document.getElementById('funnelSignups').textContent = dashboard.allTime.totalSignups;
+        document.getElementById('funnelUpgrades').textContent = dashboard.allTime.totalUpgrades;
+        document.getElementById('funnelSignupRate').textContent = dashboard.allTime.conversionRate;
+        document.getElementById('funnelUpgradeRate').textContent = dashboard.allTime.upgradeRate;
+      }
+      
+      // Load daily chart
+      const daily = await fetchData('/daily?days=14');
+      if (daily && daily.length > 0) {
+        const maxValue = Math.max(...daily.map(d => d.uniqueUsers)) || 1;
+        
+        let chartHtml = '';
+        let labelsHtml = '';
+        
+        daily.forEach((day, i) => {
+          const height = (day.uniqueUsers / maxValue) * 100;
+          const date = new Date(day.date);
+          const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          
+          chartHtml += `<div class="chart-bar" style="height: ${Math.max(height, 2)}%;" data-value="${day.uniqueUsers}"></div>`;
+          labelsHtml += `<span>${i % 2 === 0 ? label : ''}</span>`;
+        });
+        
+        document.getElementById('chartContainer').innerHTML = chartHtml;
+        document.getElementById('chartLabels').innerHTML = labelsHtml;
+      }
+      
+      // Load real-time events
+      const realtime = await fetchData('/realtime');
+      if (realtime && realtime.lastEvents) {
+        let eventsHtml = '';
+        
+        realtime.lastEvents.reverse().forEach(event => {
+          const time = new Date(event.timestamp).toLocaleTimeString();
+          let badgeClass = 'default';
+          
+          if (event.event.includes('install')) badgeClass = 'install';
+          else if (event.event.includes('signup')) badgeClass = 'signup';
+          else if (event.event.includes('upgrade')) badgeClass = 'upgrade';
+          else if (event.event.includes('error')) badgeClass = 'error';
+          
+          const details = event.properties 
+            ? Object.entries(event.properties)
+                .filter(([k]) => !['version', 'platform', 'language'].includes(k))
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ')
+            : '';
+          
+          eventsHtml += `
+            <tr>
+              <td><span class="event-badge ${badgeClass}">${event.event}</span></td>
+              <td>${time}</td>
+              <td>${details || '-'}</td>
+            </tr>
+          `;
+        });
+        
+        document.getElementById('eventsTable').innerHTML = eventsHtml || 
+          '<tr><td colspan="3" style="color: var(--text-muted);">No recent events</td></tr>';
+      }
+    }
+    
+    // Initial load
+    loadDashboard();
+    
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadDashboard, 30000);
+  </script>
+</body>
+</html>
