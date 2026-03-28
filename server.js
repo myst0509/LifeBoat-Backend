@@ -11,6 +11,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+console.log('[LifeBoat] Starting server on port:', PORT);
 
 // ============================================================================
 // SECURITY: RATE LIMITING
